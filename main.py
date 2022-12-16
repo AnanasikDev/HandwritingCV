@@ -1,6 +1,10 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+import math
+
+from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
 
 size = 480, 640 # 480, 640
 k = 1
@@ -12,42 +16,56 @@ lasts = []
 
 def clamp(a, mn, mx):
     if a < mn:
-        a = mn
+        a = int(mn)
     elif a > mx:
-        a = mx
-    return a
+        a = int(mx)
+    return int(a)
 
 
-def writePos(_x, _y, a=True, s=1):
-    x, y = clamp(int(_y * k), 0, size[0]-1), clamp(int(_x * k), 0, size[1]-1)
-    img[x, y] = s
+def writePos(_x, _y, a=True, s=0):
+    x, y = clamp(_y, 0, size[0]-1), clamp(_x, 0, size[1]-1)
+    # x, y = clamp(_x, 0, size[0]-1), clamp(_y, 0, size[1]-1)
+    img[x, y] = int(s)
+    print("Write in", x, y)
     if a:
         lasts.append((x, y))
+
+
+def humps(x):
+    return 1/((x-0.3)**2 + 0.01) + 1/((x-0.9)**2 + 0.04)
 
 
 def interpolate():
     # print(len(lasts))
     if len(lasts) < 2:
         return
+
     p1 = lasts.pop()
     p2 = lasts.pop()
     lasts.append(p1)
     # print(len(lasts))
 
-    m = (p2[0] - p1[0]) / 100, (p2[1] - p1[1]) / 100
+    m = (p2[0] - p1[0]) / 150, (p2[1] - p1[1]) / 150
 
     p = [p1[0], p1[1]]
 
-    for i in range(100):
+    for i in range(150):
         p[0] += m[0]
         p[1] += m[1]
-        writePos(p[1], p[0], False, 180)
+        writePos(p[1], p[0], False, 180)  # humps(p[1])
 
-    # print("interpolate,", m[0] * 100, m[1] * 100)
+
+def sieve(x, y):
+    r = size[0]
+    for p in lasts:
+        d = math.hypot(x, y, p[0], p[1])
+        r = min(r, d)
+    return 0 < r < 500
 
 
 def update():
     cv2.imwrite("output.png", img)
+    print("update")
 
 
 update()
@@ -68,20 +86,26 @@ while(cap.isOpened()):
     if results.multi_hand_landmarks is not None:
         # нас интересует только подушечка указательного пальца (индекс 8)
         # нужно умножить координаты а размеры картинки
-        x_tip = int(results.multi_hand_landmarks[0].landmark[8].x *
+        tip = 8
+        x_tip = int(results.multi_hand_landmarks[0].landmark[tip].x *
                 flippedRGB.shape[1])
-        y_tip = int(results.multi_hand_landmarks[0].landmark[8].y *
+        y_tip = int(results.multi_hand_landmarks[0].landmark[tip].y *
                 flippedRGB.shape[0])
         cv2.circle(flippedRGB,(x_tip, y_tip), 10, (255, 0, 0), -1)
-        pos = results.multi_hand_landmarks[0].landmark[0]
-        writePos(pos.x * size[0], pos.y * size[1])
-        interpolate()
-        print(results.multi_hand_landmarks[0])
+        # pos = results.multi_hand_landmarks[0].landmark[0]
+        # print(x_tip, y_tip)
+        # writePos(pos.x * size[0], pos.y * size[1])
+        if sieve(x_tip, y_tip):
+            writePos(x_tip, y_tip)
+            interpolate()
+        # print(results.multi_hand_landmarks[0])
     # переводим в BGR и показываем результат
     res_image = cv2.cvtColor(flippedRGB, cv2.COLOR_RGB2BGR)
     cv2.imshow("Hands", res_image)
-    update()
+    # update()
 
 # освобождаем ресурсы
 handsDetector.close()
+# img = img.T
+# img = np.fliplr(img)
 update()
