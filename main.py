@@ -23,7 +23,7 @@ def clamp(a, mn, mx):
 
 def writePos(_x, _y, a=True, s=0):
     x, y = clamp(_y, 0, size[0]-1), clamp(_x, 0, size[1]-1)
-    img[x, y] = clamp(img[x, y] - int(s), 0, 255)
+    img[x, y] = int(s) # clamp(img[x, y] - int(s), 0, 255)
     # print("Write in", x, y)
     if a:
         lasts.append((x, y))
@@ -51,13 +51,11 @@ def interpolate(width=1):
             p[0] += x
             p[1] += m / l
             
-            writePos(p[1] + w, p[0], False, color)
+            writePos(p[1] + w, p[0], False, 0) #color
 
 
 def sieve(x, y):
-
     return True
-
     if len(lasts) == 0:
         return True
 
@@ -72,6 +70,23 @@ def sieve(x, y):
 
 def update():
     cv2.imwrite("output.png", img)
+
+
+def pos(results, tip):
+    x_tip = int(results.multi_hand_landmarks[0].landmark[tip].x *
+                flippedRGB.shape[1])
+    y_tip = int(results.multi_hand_landmarks[0].landmark[tip].y *
+                flippedRGB.shape[0])
+    return x_tip, y_tip
+
+
+def is_writing(x_thumb, y_thumb, x_mid, y_mid):
+    d = math.hypot(abs(x_thumb - x_mid), abs(y_thumb - y_mid))
+    print(d)
+    m = d < 60
+    if not m:
+        lasts.clear()
+    return m
 
 
 update()
@@ -93,24 +108,31 @@ while(cap.isOpened()):
         # нас интересует только подушечка указательного пальца (индекс 8)
         # нужно умножить координаты а размеры картинки
         tip = 8
-        x_tip = int(results.multi_hand_landmarks[0].landmark[tip].x *
-                flippedRGB.shape[1])
-        y_tip = int(results.multi_hand_landmarks[0].landmark[tip].y *
-                flippedRGB.shape[0])
+        x_tip, y_tip = pos(results, tip)
         cv2.circle(flippedRGB,(x_tip, y_tip), 10, (255, 0, 0), -1)
 
-        x2 = int(results.multi_hand_landmarks[0].landmark[0].x *
-                    flippedRGB.shape[1])
-        y2 = int(results.multi_hand_landmarks[0].landmark[0].y *
-                    flippedRGB.shape[0])
-        cv2.circle(flippedRGB, (x2, y2), 10, (0, 255, 0), -1)
+        # wrist_x, wrist_y = pos(results, 0)
+        # cv2.circle(flippedRGB, (wrist_x, wrist_y), 10, (0, 255, 0), -1)
 
-        if sieve(x_tip, y_tip):
-            writePos(x_tip, y_tip, True, point_color)
-            interpolate(lines_width)
+        thumb_x, thumb_y = pos(results, 4)
+        cv2.circle(flippedRGB, (thumb_x, thumb_y), 10, (0, 255, 255), -1)
+
+        mid_x, mid_y = pos(results, 12)
+        cv2.circle(flippedRGB, (mid_x, mid_y), 10, (255, 255, 0), -1)
+
+        if is_writing(thumb_x, thumb_y, mid_x, mid_y):
+            if sieve(x_tip, y_tip):
+                writePos(x_tip, y_tip, True, point_color)
+                interpolate(lines_width)
+
+        # update()
+        cv2.imshow("output", img)
+
     # переводим в BGR и показываем результат
     res_image = cv2.cvtColor(flippedRGB, cv2.COLOR_RGB2BGR)
     cv2.imshow("Hands", res_image)
+    # update()
+#     cv2.imshow("output", img)
     # cv2.imshow("Hands", flipped)
 
 # освобождаем ресурсы
