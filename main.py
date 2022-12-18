@@ -36,18 +36,28 @@ def interpolate(width=1):
     p1 = lasts.pop()
     p2 = lasts.pop()
     lasts.append(p1)
-     
-    for w in range(0, width):
-        m = (p2[0] - p1[0]) / 150, (p2[1] - p1[1]) / 150
-        p = [p1[0], p1[1]]
 
-        for i in range(150):
-            p[0] += m[0]
-            p[1] += m[1]
+    l = abs(p2[0] - p1[0])
+    if l == 0:
+        return
+    for w in range(0, width):
+        m = p2[1] - p1[1]
+        p = [p1[0], p1[1]]
+        x = 1
+        if p2[0] < p1[0]:
+            x = -1
+
+        for i in range(l):
+            p[0] += x
+            p[1] += m / l
+            
             writePos(p[1] + w, p[0], False, color)
 
 
 def sieve(x, y):
+
+    return True
+
     if len(lasts) == 0:
         print("LOX")
         return True
@@ -59,8 +69,8 @@ def sieve(x, y):
     print(d, x - p[0], y - p[1])
     r = min(r, d)
     # print(r)
-    return 0 < r < 300
-    # return True
+    # return 0 < r < 300
+    return True
 
 
 def update():
