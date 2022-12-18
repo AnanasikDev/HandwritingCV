@@ -51,7 +51,7 @@ def interpolate(width=1, color=0):
             p[0] += x
             p[1] += m / l
             
-            writePos(p[1] + w, p[0], False, color) #color
+            writePos(p[1] + w, p[0], False, color)
 
 
 def sieve(x, y):
@@ -91,13 +91,25 @@ def mode(x_thumb, y_thumb, x_mid, y_mid, x_tip, y_tip):
 
     print(tip_mid)
 
-    if tip_mid < 25:
+    if tip_mid < 30:
         return ERASE
-    elif mid_thumb >= 60:
+    elif mid_thumb >= 80:
         lasts.clear()
         return MOVE
     else:
         return WRITE
+
+
+def draw_circle(img, x, y, radius, color):
+    for r in range(radius):
+        for a in range(45 * radius):
+            _y = clamp(int(math.sin(a) * r) + y, 0, size[0]-1)
+            _x = clamp(int(math.cos(a) * r) + x, 0, size[1]-1)
+            img[_y, _x] = color
+
+
+def show_cursor(showimg, x, y):
+    draw_circle(showimg, x, y, 8, 0.8)
 
 
 update()
@@ -139,7 +151,9 @@ while(cap.isOpened()):
                 interpolate(lines_width*5, 255)
 
         # update()
-        cv2.imshow("output", img)
+        imgshow = img.copy()
+        show_cursor(imgshow, x_tip, y_tip)
+        cv2.imshow("output", imgshow)
 
     # переводим в BGR и показываем результат
     res_image = cv2.cvtColor(flippedRGB, cv2.COLOR_RGB2BGR)
