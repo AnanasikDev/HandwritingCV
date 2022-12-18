@@ -29,7 +29,7 @@ def writePos(_x, _y, a=True, s=0):
         lasts.append((x, y))
 
 
-def interpolate(width=1):
+def interpolate(width=1, color=0):
     if len(lasts) < 2:
         return
 
@@ -51,7 +51,7 @@ def interpolate(width=1):
             p[0] += x
             p[1] += m / l
             
-            writePos(p[1] + w, p[0], False, 0) #color
+            writePos(p[1] + w, p[0], False, color) #color
 
 
 def sieve(x, y):
@@ -80,13 +80,24 @@ def pos(results, tip):
     return x_tip, y_tip
 
 
-def is_writing(x_thumb, y_thumb, x_mid, y_mid):
-    d = math.hypot(abs(x_thumb - x_mid), abs(y_thumb - y_mid))
-    print(d)
-    m = d < 60
-    if not m:
+WRITE = 0
+ERASE = 1
+MOVE = 2
+
+
+def mode(x_thumb, y_thumb, x_mid, y_mid, x_tip, y_tip):
+    mid_thumb = math.hypot(abs(x_thumb - x_mid), abs(y_thumb - y_mid))
+    tip_mid = math.hypot(abs(x_tip - x_mid), abs(y_tip - y_mid))
+
+    print(tip_mid)
+
+    if tip_mid < 25:
+        return ERASE
+    elif mid_thumb >= 60:
         lasts.clear()
-    return m
+        return MOVE
+    else:
+        return WRITE
 
 
 update()
@@ -119,11 +130,13 @@ while(cap.isOpened()):
 
         mid_x, mid_y = pos(results, 12)
         cv2.circle(flippedRGB, (mid_x, mid_y), 10, (255, 255, 0), -1)
-
-        if is_writing(thumb_x, thumb_y, mid_x, mid_y):
-            if sieve(x_tip, y_tip):
+        if sieve(x_tip, y_tip):
+            if mode(thumb_x, thumb_y, mid_x, mid_y, x_tip, y_tip) == WRITE:
                 writePos(x_tip, y_tip, True, point_color)
-                interpolate(lines_width)
+                interpolate(lines_width*2)
+            if mode(thumb_x, thumb_y, mid_x, mid_y, x_tip, y_tip) == ERASE:
+                writePos(x_tip, y_tip, True, 255)
+                interpolate(lines_width*5, 255)
 
         # update()
         cv2.imshow("output", img)
