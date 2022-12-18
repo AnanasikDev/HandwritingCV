@@ -10,7 +10,7 @@ lines_width = 8
 revert = False
 
 point_color = 0
-color = 180
+color = 120
 
 
 def clamp(a, mn, mx):
@@ -23,7 +23,7 @@ def clamp(a, mn, mx):
 
 def writePos(_x, _y, a=True, s=0):
     x, y = clamp(_y, 0, size[0]-1), clamp(_x, 0, size[1]-1)
-    img[x, y] = int(s)
+    img[x, y] = clamp(img[x, y] - int(s), 0, 255)
     # print("Write in", x, y)
     if a:
         lasts.append((x, y))
@@ -59,18 +59,15 @@ def sieve(x, y):
     return True
 
     if len(lasts) == 0:
-        print("LOX")
         return True
 
     r = size[0]
-    # for p in lasts:
     p = lasts[-1]
     d = math.hypot(x - p[0], y - p[1])
     print(d, x - p[0], y - p[1])
     r = min(r, d)
-    # print(r)
-    # return 0 < r < 300
-    return True
+    return 0 < r < 300
+    # return True
 
 
 def update():
