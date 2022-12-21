@@ -3,14 +3,23 @@ import mediapipe as mp
 import numpy as np
 import math
 
-size = 480, 640 # 480, 640
+size = 480, 640  # 480, 640
 img = np.ones(size) * 255
 lasts = []
-lines_width = 8
+lines_width = 3
+erase_width = 50
 revert = False
+cursor_size = 6  # 8 6
 
 point_color = 0
 color = 120
+
+
+WRITE = 0
+ERASE = 1
+MOVE = 2
+
+_mode = MOVE
 
 
 def clamp(a, mn, mx):
@@ -19,6 +28,12 @@ def clamp(a, mn, mx):
     elif a > mx:
         a = int(mx)
     return int(a)
+
+
+def sign(x):
+    if x >= 0:
+        return 1
+    return -1
 
 
 def writePos(_x, _y, a=True, s=0):
@@ -40,19 +55,20 @@ def interpolate(width=1, color=0):
     l = abs(p2[0] - p1[0])
     if l == 0:
         return
-    for w in range(0, width):
-        m = p2[1] - p1[1]
-        p = [p1[0], p1[1]]
-        x = 1
-        if p2[0] < p1[0]:
-            x = -1
+    m = p2[1] - p1[1]
+    p = [p1[0], p1[1]]
+    x = sign(p2[0] - p1[0])
 
-        for i in range(l):
-            p[0] += x
-            p[1] += m / l
-            
-            writePos(p[1] + w, p[0], False, color)
+    for i in range(l):
+        p[0] += x
+        p[1] += m / l
 
+        for w in range(0, width):
+            if _mode == ERASE:
+                for h in range(0, width):
+                    writePos(p[1] + w, p[0] + h, False, color)
+            else:
+                writePos(p[1] + w, p[0], False, color)
 
 def sieve(x, y):
     return True
@@ -80,18 +96,11 @@ def pos(results, tip):
     return x_tip, y_tip
 
 
-WRITE = 0
-ERASE = 1
-MOVE = 2
-
-
 def mode(x_thumb, y_thumb, x_mid, y_mid, x_tip, y_tip):
     mid_thumb = math.hypot(abs(x_thumb - x_mid), abs(y_thumb - y_mid))
     tip_mid = math.hypot(abs(x_tip - x_mid), abs(y_tip - y_mid))
 
-    print(tip_mid)
-
-    if tip_mid < 30:
+    if tip_mid < 40:
         return ERASE
     elif mid_thumb >= 80:
         lasts.clear()
@@ -101,15 +110,16 @@ def mode(x_thumb, y_thumb, x_mid, y_mid, x_tip, y_tip):
 
 
 def draw_circle(img, x, y, radius, color):
+    p = 10 # 45
     for r in range(radius):
-        for a in range(45 * radius):
+        for a in range(p * radius):
             _y = clamp(int(math.sin(a) * r) + y, 0, size[0]-1)
             _x = clamp(int(math.cos(a) * r) + x, 0, size[1]-1)
             img[_y, _x] = color
 
 
 def show_cursor(showimg, x, y):
-    draw_circle(showimg, x, y, 8, 0.8)
+    draw_circle(showimg, x, y, cursor_size, 0.8)
 
 
 update()
@@ -120,7 +130,8 @@ cap = cv2.VideoCapture(0)
 while(cap.isOpened()):
     ret, frame = cap.read()
     if cv2.waitKey(1) & 0xFF == ord('q') or not ret:
-       break
+        break
+
     flipped = np.fliplr(frame)
     # переводим его в формат RGB для распознавания
     flippedRGB = cv2.cvtColor(flipped, cv2.COLOR_BGR2RGB)
@@ -143,12 +154,14 @@ while(cap.isOpened()):
         mid_x, mid_y = pos(results, 12)
         cv2.circle(flippedRGB, (mid_x, mid_y), 10, (255, 255, 0), -1)
         if sieve(x_tip, y_tip):
-            if mode(thumb_x, thumb_y, mid_x, mid_y, x_tip, y_tip) == WRITE:
+            _mode = mode(thumb_x, thumb_y, mid_x, mid_y, x_tip, y_tip)
+            print(_mode)
+            if _mode == WRITE:
                 writePos(x_tip, y_tip, True, point_color)
-                interpolate(lines_width*2)
-            if mode(thumb_x, thumb_y, mid_x, mid_y, x_tip, y_tip) == ERASE:
+                interpolate(lines_width)
+            elif _mode == ERASE:
                 writePos(x_tip, y_tip, True, 255)
-                interpolate(lines_width*5, 255)
+                interpolate(erase_width, 255)
 
         # update()
         imgshow = img.copy()
