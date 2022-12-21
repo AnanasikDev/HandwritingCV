@@ -70,8 +70,9 @@ def interpolate(width=1, color=0):
             else:
                 writePos(p[1] + w, p[0], False, color)
 
+
 def sieve(x, y):
-    return True
+    # return True
     if len(lasts) == 0:
         return True
 
@@ -79,6 +80,7 @@ def sieve(x, y):
     p = lasts[-1]
     d = math.hypot(x - p[0], y - p[1])
     print(d, x - p[0], y - p[1])
+
     r = min(r, d)
     return 0 < r < 300
     # return True
